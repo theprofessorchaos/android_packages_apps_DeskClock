@@ -31,6 +31,7 @@ import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.RingtonePreference;
+import android.preference.SwitchPreference;
 import android.text.format.DateUtils;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -152,7 +153,7 @@ public class SettingsActivity extends BaseActivity {
                     notifyHomeTimeZoneChanged();
                     break;
                 case KEY_AUTO_HOME_CLOCK:
-                    final boolean autoHomeClockEnabled = ((CheckBoxPreference) pref).isChecked();
+                    final boolean autoHomeClockEnabled = ((SwitchPreference) pref).isChecked();
                     final Preference homeTimeZonePref = findPreference(KEY_HOME_TZ);
                     homeTimeZonePref.setEnabled(!autoHomeClockEnabled);
                     notifyHomeTimeZoneChanged();
@@ -249,8 +250,7 @@ public class SettingsActivity extends BaseActivity {
             clockStylePref.setOnPreferenceChangeListener(this);
 
             final Preference autoHomeClockPref = findPreference(KEY_AUTO_HOME_CLOCK);
-            final boolean autoHomeClockEnabled =
-                    ((SwitchPreference) autoHomeClockPref).isChecked();
+            final boolean autoHomeClockEnabled = ((SwitchPreference) autoHomeClockPref).isChecked();
             autoHomeClockPref.setOnPreferenceChangeListener(this);
 
             final ListPreference homeTimezonePref = (ListPreference) findPreference(KEY_HOME_TZ);
