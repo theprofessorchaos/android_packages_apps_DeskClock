@@ -143,8 +143,6 @@
     <dimen name="world_clock_analog_size">100dip</dimen>
     <dimen name="world_clock_margin">32dp</dimen>
 
-    <dimen name="toast_bar_bottom_margin_in_conversation">24dip</dimen>
-
     <!-- Height of the button footers. 56 height and 16 on top and bottom. -->
     <dimen name="button_footer_height">88dip</dimen>
     <!-- Negative value of the height of the button footers, for use with lightsout. -->

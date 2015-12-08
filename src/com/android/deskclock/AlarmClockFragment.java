@@ -41,6 +41,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.v4.view.ViewCompat;
@@ -66,14 +67,18 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.nispok.snackbar.Snackbar;
+import com.nispok.snackbar.SnackbarManager;
+import com.nispok.snackbar.enums.SnackbarType;
+import com.nispok.snackbar.listeners.ActionClickListener;
+import com.nispok.snackbar.listeners.EventListener;
 
 import com.android.deskclock.alarms.AlarmStateManager;
 import com.android.deskclock.events.Events;
 import com.android.deskclock.provider.Alarm;
 import com.android.deskclock.provider.AlarmInstance;
 import com.android.deskclock.provider.DaysOfWeek;
-import com.android.deskclock.widget.ActionableToastBar;
 import com.android.deskclock.widget.TextTime;
 
 import java.util.Calendar;
@@ -100,7 +105,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
     private static final String KEY_RINGTONE_TITLE_CACHE = "ringtoneTitleCache";
     private static final String KEY_SELECTED_ALARMS = "selectedAlarms";
     private static final String KEY_DELETED_ALARM = "deletedAlarm";
-    private static final String KEY_UNDO_SHOWING = "undoShowing";
     private static final String KEY_PREVIOUS_DAY_MAP = "previousDayMap";
     private static final String KEY_SELECTED_ALARM = "selectedAlarm";
 
@@ -127,8 +131,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
     private View mFooterView;
 
     private Bundle mRingtoneTitleCache; // Key: ringtone uri, value: ringtone title
-    private ActionableToastBar mUndoBar;
-    private View mUndoFrame;
 
     protected Alarm mSelectedAlarm;
     protected long mScrollToAlarmId = INVALID_ID;
@@ -138,7 +140,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
     // Saved states for undo
     private Alarm mDeletedAlarm;
     protected Alarm mAddedAlarm;
-    private boolean mUndoShowing;
 
     private Interpolator mExpandInterpolator;
     private Interpolator mCollapseInterpolator;
@@ -201,7 +202,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
             repeatCheckedIds = savedState.getLongArray(KEY_REPEAT_CHECKED_IDS);
             mRingtoneTitleCache = savedState.getBundle(KEY_RINGTONE_TITLE_CACHE);
             mDeletedAlarm = savedState.getParcelable(KEY_DELETED_ALARM);
-            mUndoShowing = savedState.getBoolean(KEY_UNDO_SHOWING);
             selectedAlarms = savedState.getLongArray(KEY_SELECTED_ALARMS);
             previousDayMap = savedState.getBundle(KEY_PREVIOUS_DAY_MAP);
             mSelectedAlarm = savedState.getParcelable(KEY_SELECTED_ALARM);
@@ -242,10 +242,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         mMainLayout = (FrameLayout) v.findViewById(R.id.main);
         mAlarmsList = (ListView) v.findViewById(R.id.alarms_list);
 
-        mUndoBar = (ActionableToastBar) v.findViewById(R.id.undo_bar);
-        mUndoFrame = v.findViewById(R.id.undo_frame);
-        mUndoFrame.setOnTouchListener(this);
-
         mFooterView = v.findViewById(R.id.alarms_footer_view);
         mFooterView.setOnTouchListener(this);
 
@@ -260,7 +256,10 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
 
                 final int count = mAdapter.getCount();
                 if (mDeletedAlarm != null && prevAdapterCount > count) {
-                    showUndoBar();
+                    String text = getString(R.string.alarm_deleted);
+                    String buttonText = getString(R.string.alarm_undo);
+                    popAlarmSetSnackbar(text, Snackbar.SnackbarDuration.LENGTH_INDEFINITE,
+                                buttonText);
                 }
 
                 if (USE_TRANSITION_FRAMEWORK &&
@@ -284,9 +283,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         mAlarmsList.setVerticalScrollBarEnabled(true);
         mAlarmsList.setOnCreateContextMenuListener(this);
 
-        if (mUndoShowing) {
-            showUndoBar();
-        }
         return v;
     }
 
@@ -328,34 +324,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         setTimePickerListener();
     }
 
-    private void hideUndoBar(boolean animate, MotionEvent event) {
-        if (mUndoBar != null) {
-            mUndoFrame.setVisibility(View.GONE);
-            if (event != null && mUndoBar.isEventInToastBar(event)) {
-                // Avoid touches inside the undo bar.
-                return;
-            }
-            mUndoBar.hide(animate);
-        }
-        mDeletedAlarm = null;
-        mUndoShowing = false;
-    }
-
-    private void showUndoBar() {
-        final Alarm deletedAlarm = mDeletedAlarm;
-        mUndoFrame.setVisibility(View.VISIBLE);
-        mUndoBar.show(new ActionableToastBar.ActionClickedListener() {
-            @Override
-            public void onActionClicked() {
-                mAddedAlarm = deletedAlarm;
-                mDeletedAlarm = null;
-                mUndoShowing = false;
-
-                asyncAddAlarm(deletedAlarm);
-            }
-        }, 0, getResources().getString(R.string.alarm_deleted), true, R.string.alarm_undo, true);
-    }
-
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -364,7 +332,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         outState.putLongArray(KEY_SELECTED_ALARMS, mAdapter.getSelectedAlarmsArray());
         outState.putBundle(KEY_RINGTONE_TITLE_CACHE, mRingtoneTitleCache);
         outState.putParcelable(KEY_DELETED_ALARM, mDeletedAlarm);
-        outState.putBoolean(KEY_UNDO_SHOWING, mUndoShowing);
         outState.putBundle(KEY_PREVIOUS_DAY_MAP, mAdapter.getPreviousDaysOfWeekMap());
         outState.putParcelable(KEY_SELECTED_ALARM, mSelectedAlarm);
     }
@@ -372,17 +339,18 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
     @Override
     public void onDestroy() {
         super.onDestroy();
-        ToastMaster.cancelToast();
+        SnackbarManager.dismiss();
     }
 
     @Override
     public void onPause() {
         super.onPause();
         // When the user places the app in the background by pressing "home",
-        // dismiss the toast bar. However, since there is no way to determine if
-        // home was pressed, just dismiss any existing toast bar when restarting
+        // dismiss the snackbar. However, since there is no way to determine if
+        // home was pressed, just dismiss any existing snackbar when restarting
         // the app.
-        hideUndoBar(false, null);
+
+        SnackbarManager.dismiss();
     }
 
     private void showLabelDialog(final Alarm alarm) {
@@ -439,11 +407,9 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         } else {
             // Trying to display a deleted alarm should only happen from a missed notification for
             // an alarm that has been marked deleted after use.
-            Context context = getActivity().getApplicationContext();
-            Toast toast = Toast.makeText(context, R.string.missed_alarm_has_been_deleted,
-                    Toast.LENGTH_LONG);
-            ToastMaster.setToast(toast);
-            toast.show();
+            String text = getString(R.string.missed_alarm_has_been_deleted);
+            popAlarmSetSnackbar(text, Snackbar.SnackbarDuration.LENGTH_LONG,
+                                null);
         }
     }
 
@@ -893,14 +859,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
             }
         }
 
-        private int getTintedBackgroundColor() {
-            final int c = Utils.getCurrentHourColor(getActivity());
-            final int red = Color.red(c) + (int) (TINTED_LEVEL * (255 - Color.red(c)));
-            final int green = Color.green(c) + (int) (TINTED_LEVEL * (255 - Color.green(c)));
-            final int blue = Color.blue(c) + (int) (TINTED_LEVEL * (255 - Color.blue(c)));
-            return Color.rgb(red, green, blue);
-        }
-
         private void bindExpandArea(final ItemHolder itemHolder, final Alarm alarm) {
             // Views in here are not bound until the item is expanded.
 
@@ -965,9 +923,9 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
 
                     // if the change altered the next scheduled alarm time, tell the user
                     final Calendar newNextAlarmTime = alarm.getNextAlarmTime(now);
-                    final boolean popupToast = !oldNextAlarmTime.equals(newNextAlarmTime);
+                    final boolean popupSnackbar = !oldNextAlarmTime.equals(newNextAlarmTime);
 
-                    asyncUpdateAlarm(alarm, popupToast);
+                    asyncUpdateAlarm(alarm, popupSnackbar);
                 }
             });
 
@@ -1010,9 +968,9 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
 
                         // if the change altered the next scheduled alarm time, tell the user
                         final Calendar newNextAlarmTime = alarm.getNextAlarmTime(now);
-                        final boolean popupToast = !oldNextAlarmTime.equals(newNextAlarmTime);
+                        final boolean popupSnackbar = !oldNextAlarmTime.equals(newNextAlarmTime);
 
-                        asyncUpdateAlarm(alarm, popupToast);
+                        asyncUpdateAlarm(alarm, popupSnackbar);
                     }
                 });
             }
@@ -1432,6 +1390,14 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         return newInstance;
     }
 
+    private int getTintedBackgroundColor() {
+        final int c = Utils.getCurrentHourColor(getActivity());
+        final int red = Color.red(c) + (int) (TINTED_LEVEL * (255 - Color.red(c)));
+        final int green = Color.green(c) + (int) (TINTED_LEVEL * (255 - Color.green(c)));
+        final int blue = Color.blue(c) + (int) (TINTED_LEVEL * (255 - Color.blue(c)));
+        return Color.rgb(red, green, blue);
+    }
+
     private void asyncDeleteAlarm(final Alarm alarm) {
         final Context context = AlarmClockFragment.this.getActivity().getApplicationContext();
         final AsyncTask<Void, Void, Void> deleteTask = new AsyncTask<Void, Void, Void>() {
@@ -1448,7 +1414,6 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
                 return null;
             }
         };
-        mUndoShowing = true;
         deleteTask.execute();
     }
 
@@ -1477,14 +1442,17 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
             @Override
             protected void onPostExecute(AlarmInstance instance) {
                 if (instance != null) {
-                    AlarmUtils.popAlarmSetToast(context, instance.getAlarmTime().getTimeInMillis());
+                    final long time = instance.getAlarmTime().getTimeInMillis();
+                    final String text = AlarmUtils.popSnackbarText(context, time);
+                    popAlarmSetSnackbar(text, Snackbar.SnackbarDuration.LENGTH_SHORT,
+                                null);
                 }
             }
         };
         updateTask.execute();
     }
 
-    protected void asyncUpdateAlarm(final Alarm alarm, final boolean popToast) {
+    protected void asyncUpdateAlarm(final Alarm alarm, final boolean snackBar) {
         final Context context = AlarmClockFragment.this.getActivity().getApplicationContext();
         final AsyncTask<Void, Void, AlarmInstance> updateTask =
                 new AsyncTask<Void, Void, AlarmInstance>() {
@@ -1507,8 +1475,11 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
 
             @Override
             protected void onPostExecute(AlarmInstance instance) {
-                if (popToast && instance != null) {
-                    AlarmUtils.popAlarmSetToast(context, instance.getAlarmTime().getTimeInMillis());
+                if (snackBar && instance != null) {
+                    final long time = instance.getAlarmTime().getTimeInMillis();
+                    final String text = AlarmUtils.popSnackbarText(context, time);
+                    popAlarmSetSnackbar(text, Snackbar.SnackbarDuration.LENGTH_SHORT,
+                                null);
                 }
             }
         };
@@ -1517,13 +1488,13 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        hideUndoBar(true, event);
+        SnackbarManager.dismiss();
         return false;
     }
 
     @Override
     public void onFabClick(View view){
-        hideUndoBar(true, null);
+        SnackbarManager.dismiss();
         startCreatingAlarm();
     }
 
@@ -1548,4 +1519,82 @@ public abstract class AlarmClockFragment extends DeskClockFragment implements
         mLeftButton.setVisibility(View.INVISIBLE);
         mRightButton.setVisibility(View.INVISIBLE);
     }
+
+    /**
+     * Snackbar message which displays the time left until the alarm
+     * and replaces the undo bar which is displayed when you delete an alarm
+     *
+     * @param message, the message that will be shown
+     * @param duration, amount of time it will be shown for
+     * @param label, text for the action button
+     */
+    private void popAlarmSetSnackbar(final String message, Snackbar.SnackbarDuration duration,
+            final String label) {
+
+        final Context mContext = getActivity();
+        final Alarm deletedAlarm = mDeletedAlarm;
+
+        Activity realActivity = ((Activity)mContext).getParent();
+        if (realActivity == null) {
+            realActivity = (Activity)mContext;
+        }
+        final Activity activity = realActivity;
+
+        final FrameLayout view = (FrameLayout) activity.findViewById(
+                R.id.desk_clock);
+        final FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        );
+
+        SnackbarManager.show(
+            Snackbar.with(mContext)
+                .text(message)
+                .color(getTintedBackgroundColor())
+                .type(SnackbarType.MULTI_LINE)
+                .duration(duration)
+                .actionLabel(label)
+                .actionListener(new ActionClickListener() {
+                    @Override
+                    public void onActionClicked(Snackbar snackbar) {
+                        if (label != null) {
+                            mAddedAlarm = deletedAlarm;
+                            mDeletedAlarm = null;
+                            asyncAddAlarm(deletedAlarm);
+                        }
+                    }
+                })
+                .eventListener(new EventListener() {
+                    @Override
+                    public void onShow(Snackbar snackbar) {
+                        params.setMargins(0, 0, 0, snackbar.getHeight());
+                        view.setLayoutParams(params);
+                    }
+
+                    @Override
+                    public void onDismiss(Snackbar snackbar) {
+                        new Handler().postDelayed(new Runnable() {
+                            public void run() {
+                                params.setMargins(0, 0, 0, 0);
+                                view.setLayoutParams(params);
+                            }
+                        }, 230);
+                    }
+
+                    @Override
+                    public void onShowByReplace(Snackbar snackbar) {}
+
+                    @Override
+                    public void onShown(Snackbar snackbar) {}
+
+                    @Override
+                    public void onDismissByReplace(Snackbar snackbar) {}
+
+                    @Override
+                    public void onDismissed(Snackbar snackbar) {}
+
+                })
+            , activity);
+    }
+
 }

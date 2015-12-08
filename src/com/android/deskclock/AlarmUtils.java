@@ -195,4 +195,10 @@ public class AlarmUtils {
         ToastMaster.setToast(toast);
         toast.show();
     }
+
+    static String popSnackbarText(Context context, long alarmTime) {
+        final long alarmTimeDelta = alarmTime - System.currentTimeMillis();
+        final String text = formatElapsedTimeUntilAlarm(context, alarmTimeDelta);
+        return text;
+    }
 }
