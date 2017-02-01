@@ -16,16 +16,12 @@
 
 package com.android.deskclock;
 
-import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.support.annotation.VisibleForTesting;
@@ -120,36 +116,6 @@ public class AlarmUtils {
         timePickerFragment.setOnTimeSetListener((TimePickerDialog.OnTimeSetListener) fragment);
         timePickerFragment.setAlarm(alarm);
         timePickerFragment.show(manager, FRAG_TAG_TIME_PICKER);
-    }
-
-    /**
-     * @return {@code true} iff the user has granted permission to read the ringtone at the given
-     *      uri or no permission is required to read the ringtone
-     */
-    public static boolean hasPermissionToDisplayRingtoneTitle(Context context, Uri ringtoneUri) {
-        final PackageManager pm = context.getPackageManager();
-        final String packageName = context.getPackageName();
-
-        // If the default alarm alert ringtone URI is given, resolve it to the actual URI.
-        if (Settings.System.DEFAULT_ALARM_ALERT_URI.equals(ringtoneUri)) {
-            ringtoneUri = RingtoneManager.getActualDefaultRingtoneUri(context,
-                    RingtoneManager.TYPE_ALARM);
-        }
-
-        // If no ringtone is specified, return true.
-        if (ringtoneUri == null || ringtoneUri == Alarm.NO_RINGTONE_URI) {
-            return true;
-        }
-
-        // If the permission is already granted, return true.
-        if (pm.checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE, packageName)
-                == PackageManager.PERMISSION_GRANTED) {
-            return true;
-        }
-
-        // If the ringtone is internal, return true;
-        // external ringtones require the permission to see their title
-        return ringtoneUri.toString().startsWith("content://media/internal/");
     }
 
     /**
