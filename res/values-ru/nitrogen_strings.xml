@@ -27,4 +27,14 @@
     <string name="action_summary_do_nothing">ничего не делать</string>
     <string name="menu_item_widget_settings">Настройки виджета</string>
     <string name="activity_not_found">Активити не найдено!</string>
+    <!-- Header in the preferences settings for the section pertaining to timers. -->
+    <string name="timer_settings">Таймеры</string>
+    <!-- Description for timer ringtone setting. -->
+    <string name="timer_ringtone_title">Звук таймера</string>
+
+    <!-- Setting title for changing the crescendo duration. -->
+    <string name="crescendo_duration_title">"Постепенно увеличивать громкость"</string>
+    <string name="no_crescendo_duration">"ВЫКЛ"</string>
+    <string name="crescendo_duration">"<xliff:g id="NUMBER">%s</xliff:g> сек."</string>
+    <string name="crescendo_picker_label">"сек."</string>
 </resources>

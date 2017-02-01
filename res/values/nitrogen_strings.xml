@@ -40,4 +40,21 @@
     <!-- Setting title for accessing the cLock widget settings -->
     <string name="menu_item_widget_settings">Widget settings</string>
     <string name="activity_not_found">Activity not found!</string>
+
+    <!-- Header in the preferences settings for the section pertaining to timers. -->
+    <string name="timer_settings">Timers</string>
+    <!-- Description for timer ringtone setting. -->
+    <string name="timer_ringtone_title">Timer ringtone</string>
+
+    <!-- Setting title for changing the crescendo duration. -->
+    <string name="crescendo_duration_title">Gradually increase volume</string>
+
+    <!-- Summary value for changing the crescendo duration to 0. -->
+    <string name="no_crescendo_duration">Off</string>
+
+    <!-- Summary value for changing the crescendo duration. -->
+    <string name="crescendo_duration"><xliff:g id="number" example="7">%s</xliff:g> seconds</string>
+
+    <!-- Setting label when changing the crescendo duration. -->
+    <string name="crescendo_picker_label">seconds</string>
 </resources>
