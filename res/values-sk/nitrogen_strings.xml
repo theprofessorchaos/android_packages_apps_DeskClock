@@ -35,6 +35,6 @@
     <!-- Setting title for changing the crescendo duration. -->
     <string name="crescendo_duration_title">"Postupne zvyšovať hlasitosť"</string>
     <string name="no_crescendo_duration">"VYP"</string>
-    <string name="crescendo_duration">"<xliff:g id="NUMBER">%s</xliff:g> сек."</string>
+    <string name="crescendo_duration">"<xliff:g id="NUMBER">%s</xliff:g> sek."</string>
     <string name="crescendo_picker_label">"sek."</string>
 </resources>
