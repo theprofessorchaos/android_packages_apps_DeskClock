@@ -25,8 +25,6 @@
     <string name="action_summary_snooze">odložiť zvonenie budíku</string>
     <string name="action_summary_dismiss">vypnúť budík</string>
     <string name="action_summary_do_nothing">nerobiť nič</string>
-    <string name="menu_item_widget_settings">Nastavenia widgetu</string>
-    <string name="activity_not_found">Nie je žiadna aktivita!</string>
     <!-- Header in the preferences settings for the section pertaining to timers. -->
     <string name="timer_settings">Časovače</string>
     <!-- Description for timer ringtone setting. -->

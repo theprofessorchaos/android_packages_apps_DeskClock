@@ -37,10 +37,6 @@
     <string name="action_summary_dismiss">dismiss the alarm</string>
     <string name="action_summary_do_nothing">do nothing</string>
 
-    <!-- Setting title for accessing the cLock widget settings -->
-    <string name="menu_item_widget_settings">Widget settings</string>
-    <string name="activity_not_found">Activity not found!</string>
-
     <!-- Header in the preferences settings for the section pertaining to timers. -->
     <string name="timer_settings">Timers</string>
     <!-- Description for timer ringtone setting. -->
